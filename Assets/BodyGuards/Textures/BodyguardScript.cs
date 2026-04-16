@@ -129,12 +129,13 @@ public class BodyguardAI : MonoBehaviour
         animator.SetFloat("Speed", speedPercent, 0.1f, Time.deltaTime);
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnCollisionEnter(Collision collision)
     {
+        Debug.Log("collision hit");
         if (currentState == State.KnockedDown) return;
 
         // Note: 'other.gameObject' instead of 'collision.gameObject'
-        if (other.gameObject.CompareTag(holdableTag))
+        if (collision.gameObject.CompareTag(holdableTag))
         {
             StartCoroutine(KnockdownRoutine());
         }
@@ -146,15 +147,8 @@ public class BodyguardAI : MonoBehaviour
         agent.isStopped = true;
         agent.velocity = Vector3.zero;
 
-        animator.SetTrigger("KnockDown");
-        animator.SetBool("IsKnockedDown", true);
-
-        yield return new WaitForSeconds(knockdownDuration);
-
-        animator.SetBool("IsKnockedDown", false);
-        animator.SetTrigger("GetUp");
-
-        yield return new WaitForSeconds(1.5f);
+        animator.SetTrigger("hit");
+        yield return new WaitForSeconds(1.5f); 
 
         // Once they get up, decide what to do next based on if the player is still there
         if (CanSeePlayer())

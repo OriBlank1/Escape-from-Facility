@@ -131,13 +131,13 @@ public class BodyguardAI : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log("collision hit");
-        if (currentState == State.KnockedDown) return;
+        Debug.Log("collision hit!");
 
-        // Note: 'other.gameObject' instead of 'collision.gameObject'
+        // If the object hitting the bodyguard has the "Holdable" tag
         if (collision.gameObject.CompareTag(holdableTag))
         {
-            StartCoroutine(KnockdownRoutine());
+            // Destroy the bodyguard immediately
+            Destroy(gameObject);
         }
     }
 

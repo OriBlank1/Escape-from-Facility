@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -7,9 +6,6 @@ using UnityEngine.AI;
 [RequireComponent(typeof(Rigidbody))]
 public class BodyguardAI : MonoBehaviour
 {
-    public enum State { Guard, Chase, ReturnToPost, KnockedDown }
-    public State currentState = State.Guard;
-
     [Header("References")]
     public Transform player;
     private NavMeshAgent agent;
@@ -18,89 +14,49 @@ public class BodyguardAI : MonoBehaviour
     [Header("AI Settings")]
     public float sightRange = 15f;
     public float fieldOfView = 120f;
-    public float walkSpeed = 2f;
     public float runSpeed = 5f;
 
     [Header("Knockdown Settings")]
-    public float knockdownDuration = 5f;
     public string holdableTag = "Holdable";
 
-    // Variables to remember where the bodyguard started
-    private Vector3 guardPostPosition;
-    private Quaternion guardPostRotation;
+    // A simple switch: once this flips to true, they never stop chasing.
+    private bool hasSpottedPlayer = false;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
 
-        // Find player if not assigned
+        // Find player if not assigned in the Inspector
         if (player == null)
         {
             GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
             if (playerObj != null) player = playerObj.transform;
         }
 
-        // Save the exact spot and rotation they started at
-        guardPostPosition = transform.position;
-        guardPostRotation = transform.rotation;
-
-        agent.speed = walkSpeed;
-        currentState = State.Guard;
+        // Stand perfectly still when the level starts
+        agent.speed = runSpeed;
+        agent.isStopped = true;
     }
 
     void Update()
     {
-        if (currentState == State.KnockedDown) return;
-
         UpdateAnimator();
 
-        bool canSeePlayer = CanSeePlayer();
-
-        // --- TEMPORARY DEBUG LINE ---
-        if (canSeePlayer) { Debug.Log("I SEE THE PLAYER!"); }
-        // ----------------------------
-
-        if (canSeePlayer)
+        // If they haven't seen you yet, keep checking
+        if (!hasSpottedPlayer)
         {
-            currentState = State.Chase;
+            if (CanSeePlayer())
+            {
+                // The moment they see you, flip the switch to true!
+                hasSpottedPlayer = true;
+                agent.isStopped = false; // Release them so they can move
+            }
         }
-        else if (!canSeePlayer && currentState == State.Chase)
+        else
         {
-            currentState = State.ReturnToPost;
-        }
-
-        HandleStateLogic();
-    }
-
-    private void HandleStateLogic()
-    {
-        switch (currentState)
-        {
-            case State.Guard:
-                agent.isStopped = true;
-
-                // Slowly rotate back to the original facing direction while guarding
-                transform.rotation = Quaternion.Slerp(transform.rotation, guardPostRotation, Time.deltaTime * 5f);
-                break;
-
-            case State.Chase:
-                agent.isStopped = false;
-                agent.speed = runSpeed;
-                agent.SetDestination(player.position);
-                break;
-
-            case State.ReturnToPost:
-                agent.isStopped = false;
-                agent.speed = walkSpeed;
-                agent.SetDestination(guardPostPosition);
-
-                // If we are close enough to the post, go back to Guard state
-                if (!agent.pathPending && agent.remainingDistance < 0.5f)
-                {
-                    currentState = State.Guard;
-                }
-                break;
+            // If they have spotted you, constantly update their destination to your position
+            agent.SetDestination(player.position);
         }
     }
 
@@ -133,31 +89,10 @@ public class BodyguardAI : MonoBehaviour
     {
         Debug.Log("collision hit!");
 
-        // If the object hitting the bodyguard has the "Holdable" tag
+        // If hit by the crowbar, destroy the bodyguard immediately
         if (collision.gameObject.CompareTag(holdableTag))
         {
-            // Destroy the bodyguard immediately
             Destroy(gameObject);
-        }
-    }
-
-    private IEnumerator KnockdownRoutine()
-    {
-        currentState = State.KnockedDown;
-        agent.isStopped = true;
-        agent.velocity = Vector3.zero;
-
-        animator.SetTrigger("hit");
-        yield return new WaitForSeconds(1.5f); 
-
-        // Once they get up, decide what to do next based on if the player is still there
-        if (CanSeePlayer())
-        {
-            currentState = State.Chase;
-        }
-        else
-        {
-            currentState = State.ReturnToPost;
         }
     }
 }

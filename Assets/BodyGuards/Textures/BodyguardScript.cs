@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
@@ -65,6 +65,7 @@ public class BodyguardAI : MonoBehaviour
         if (player == null) return false;
 
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+
         if (distanceToPlayer < sightRange)
         {
             Vector3 directionToPlayer = (player.position - transform.position).normalized;
@@ -72,7 +73,25 @@ public class BodyguardAI : MonoBehaviour
 
             if (angleToPlayer < fieldOfView / 2f)
             {
-                return true;
+                // Start laser at bodyguard's chest
+                Vector3 eyePosition = transform.position + Vector3.up * 1.5f;
+
+                // Shoot laser directly at the Main Camera (which is already at head-height)
+                Vector3 targetPosition = player.position;
+
+                Vector3 rayDirection = (targetPosition - eyePosition).normalized;
+
+                Debug.DrawRay(eyePosition, rayDirection * sightRange, Color.red);
+
+                if (Physics.Raycast(eyePosition, rayDirection, out RaycastHit hit, sightRange))
+                {
+                    Debug.Log("Bodyguard is looking at: " + hit.transform.name);
+
+                    if (hit.transform == player || hit.transform.IsChildOf(player))
+                    {
+                        return true;
+                    }
+                }
             }
         }
         return false;
